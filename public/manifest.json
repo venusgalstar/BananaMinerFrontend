@@ -1,6 +1,6 @@
 {
-  "short_name": "BNBTheLostWorld",
-  "name": "BNBTheLostWorld",
+  "short_name": "BUSDLAND",
+  "name": "BUSDLAND",
   "icons": [
     {
       "src": "favicon.png",
@@ -21,5 +21,5 @@
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "background_color": "#eeeeee"
 }
