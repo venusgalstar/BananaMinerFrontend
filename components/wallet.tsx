@@ -15,23 +15,23 @@ import { chainName } from "../config";
 const buttons = {
   Disconnected: {
     icon: WalletIcon,
-    title: "Connect Wallet",
+    title: "SELECT WALLET",
   },
   Connected: {
     icon: WalletIcon,
-    title: "My Wallet",
+    title: "MY WALLET",
   },
   Rejected: {
     icon: ArrowPathIcon,
-    title: "Reconnect",
+    title: "RECONNECT",
   },
   Error: {
     icon: ArrowPathIcon,
-    title: "Change Wallet",
+    title: "CHANGE WALLET",
   },
   NotExist: {
     icon: ArrowDownTrayIcon,
-    title: "Install Wallet",
+    title: "INSTALL WALLET",
   },
 };
 

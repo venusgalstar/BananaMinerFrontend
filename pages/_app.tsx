@@ -18,11 +18,13 @@ import { ToastContainer } from "react-toastify";
 import { seiNetwork, seiNetworkAssets } from "../config/seiconfig";
 import "react-toastify/dist/ReactToastify.css";
 
-const testnet = process.env.NEXT_PUBLIC_TESTNET;
+const testnet = true;
+// const testnet = process.env.NEXT_PUBLIC_TESTNET;
 
 function CreateCosmosApp({ Component, pageProps }: AppProps) {
   const signerOptions: SignerOptions = {
-    signingStargate: (chain: Chain) => {
+    signingCosmwasm: (chain: Chain) => {
+      // console.log("chain >>> ", chain);
       switch (chain.chain_name) {
         case "seitestnet":
           return {
@@ -58,7 +60,7 @@ function CreateCosmosApp({ Component, pageProps }: AppProps) {
       endpointOptions={{
         endpoints: testnet ? {
           seitestnet: {
-            rpc: ["https://sei-testnet-rpc.brocha.in/"],
+            rpc: ["https://rpc.atlantic-2.seinetwork.io/"],
             rest: ["https://sei-testnet-rest.brocha.in/"],
           }
         } : {
@@ -83,7 +85,7 @@ function CreateCosmosApp({ Component, pageProps }: AppProps) {
             <Component {...pageProps} />
           </div>
         </ThemeProvider>
-        <ToastContainer />
+        <ToastContainer pauseOnFocusLoss={true} position="bottom-left" autoClose={3000} toastClassName={'toast-theme'} />
       </SigningCosmWasmProvider>
     </ChainProvider>
   );

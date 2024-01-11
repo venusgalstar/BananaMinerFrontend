@@ -6,6 +6,8 @@ import NutritionFacts from "./components/NutritionFacts";
 import ReferralLink from "./components/ReferralLink";
 import Footer from "./components/Footer";
 import { WalletSection } from "../components";
+import {chainName } from "../config"
+import { useChain } from "@cosmos-kit/react";
 
 const Wrapper = styled("div")(({ theme }) => ({
   position: 'relative',
@@ -23,6 +25,15 @@ const WalletButton = styled("div")(() => ({
 
 
 export default function Home() {
+  const {
+    connect,
+    openView,
+    status,
+    username,
+    address,
+    chain: chainInfo,
+    logoUrl,
+  } = useChain(chainName)
 
   return (
     <div>
@@ -33,7 +44,7 @@ export default function Home() {
         <Header />
         <BakeCard />
         <NutritionFacts />
-        <ReferralLink address={undefined} />
+        <ReferralLink address={address} />
         <Footer />
       </Wrapper>
     </div>

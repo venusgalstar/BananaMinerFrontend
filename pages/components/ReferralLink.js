@@ -4,6 +4,7 @@ import Typography from "@mui/material/Typography";
 import Button from '@mui/material/Button';
 import Grid from "@mui/material/Grid";
 import { useNotify } from '../../components/notify';
+import { toast } from "react-toastify"
 
 import { styled } from "@mui/system";
 
@@ -26,11 +27,41 @@ const Input = styled("input")(({ theme }) => ({
 
 export default function ReferralLink({ address }) {
     const link = (typeof window !== "undefined" ? window.origin : '') + `?ref=${address}`;
-    const notify = useNotify();
+    // const notify = useNotify();
 
     const copyToClipboard = () => {
-        notify('success', 'Referral Link Copied to Clipboard');
-        navigator.clipboard.writeText(link);
+        // notify('success', 'Referral Link Copied to Clipboard');
+        
+        if (typeof (navigator.clipboard) == 'undefined') {
+            var textArea = document.createElement("textarea");
+            textArea.value = link;
+            textArea.style.position = "fixed";  //avoid scrolling to bottom
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+        
+            try {
+                var successful = document.execCommand('copy');
+                var msg = successful ? 'successful' : 'unsuccessful';
+                console.log (msg)
+            } catch (err) {
+                console.log (err)
+            }
+        
+            document.body.removeChild(textArea);
+            toast.success('Referral Link Copied to Clipboard');
+            // toast.error('Referral Link Copied to Clipboard');
+            // toast.warning('Referral Link Copied to Clipboard');
+            // return;
+        } else {
+            navigator.clipboard.writeText("link")
+                .then(() => {
+                    toast.success('Referral Link Copied to Clipboard', {icon: "🚀"});
+                })
+                .catch((err) => {
+                    console.log(err.message);
+                });
+        }
     };
 
     return (
@@ -58,7 +89,7 @@ export default function ReferralLink({ address }) {
                     marginTop={2}
                     paddingX={3}
                 >
-                    Earn 12% of the SOL used to compound from anyone who uses your
+                    Earn 12% of the SEI used to compound from anyone who uses your
                     referral link
                 </Typography>
             </CardContent>

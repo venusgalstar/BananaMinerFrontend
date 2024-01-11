@@ -2,10 +2,11 @@
  * remark: This is an example config file for a terra testnet chain and it should be deleted before merging.
  */
 import type { Chain, AssetList } from "@chain-registry/types";
-const testnet = process.env.NEXT_PUBLIC_TESTNET;
+const testnet = true;
+// const testnet = process.env.NEXT_PUBLIC_TESTNET;
 
 export const seiNetwork: Chain = {
-  $schema: "../../chain.schema.json",
+
   chain_name: testnet ? "seitestnet" : "sei",
   status: "live",
   network_type: testnet ? "testnet" : "mainnet",
@@ -80,7 +81,6 @@ export const seiNetwork: Chain = {
 };
 
 export const seiNetworkAssets: AssetList = {
-  $schema: "../../assetlist.schema.json",
   chain_name: testnet ? "seitestnet" : "sei",
   assets: [
     {

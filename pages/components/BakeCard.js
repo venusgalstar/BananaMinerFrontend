@@ -8,21 +8,14 @@ import Grid from "@mui/material/Grid";
 import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/system";
+import { isEmpty } from "../../utils/utils";
 
-// import { useWallet } from "@solana/wallet-adapter-react";
-// import { PublicKey } from "@solana/web3.js";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from 'next/router';
 import PriceInput from "../../components/PriceInput";
-// import { buyEggs, hatchEggs, initialize, sellEggs } from "../../contracts/bean";
 import axios from "axios";
-
-// import {
-//     getGlobalStateData,
-//     getUserData,
-//     getVaultSolBalance,
-//     getWalletSolBalance,
-// } from "../../contracts/bean";
+import { useSigningClient } from "../../contexts/cosmwasm";
+import { config, chainName, defaultDenom, minerContract } from "../../config";
 
 const CardWrapper = styled(Card)({
     background: "transparent",
@@ -45,23 +38,47 @@ const UnderlinedGrid = styled(Grid)(() => ({
 }));
 
 export default function BakeCard() {
+    const {
+        pending,
+        getGlobalStateData,
+        getUserData,
+        buyBananas,
+        hatchBananas,
+        // initialize,
+        startMining,
+        sellBananas,
+        balances,
+        address,
+    } = useSigningClient();
+
     const searchParams = useRouter();
-    /*const { address, chainId } = useAuthContext();*/
-    // const { publicKey: address } = useWallet();
     const [bakeSOL, setBakeSOL] = useState(0);
     const [loading, setLoading] = useState(false);
-    // const wallet = useWallet();
 
     const [minersCount, setMinersCount] = useState("0");
     const [beanRewards, setBeanRewards] = useState("0");
     const [walletSolBalance, setWalletSolBalance] = useState("0");
-    const [contractSolBalance, setContractSolBalance] = useState("0");
+    // const [contractSolBalance, setContractSolBalance] = useState("0");
     const [TVLBalance, setTVLBalance] = useState("0");
     const [dataUpdate, setDataUpdate] = useState(false);
     const [adminKey, setAdminKey] = useState(null);
+    const [isStarted, setIsStarted] = useState(false);
+    const [treasuryWallet, setTreasuryWallet] = useState("");
 
     let cachedPrice = 0;
     let lastFetchTime = 0;
+
+    const isAdminConnected = () => {
+        if (address && adminKey) {
+            // console.log("adminKey.toString() =", adminKey.toString());
+            return address.toString() == adminKey.toString()
+        }
+        return false;
+    }
+
+    const canShowStartMine = useMemo(() => {
+        return !isStarted && isAdminConnected()
+    }, [isStarted, address])
 
     async function getSolanaPriceInUSD() {
 
@@ -72,71 +89,76 @@ export default function BakeCard() {
         }
 
         try {
-            const response = await axios.get('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
-            cachedPrice = response.data['pairs'][0].priceUsd;
+            const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=sei-network&vs_currencies=usd');
+            cachedPrice = response.data['sei-network'].usd;
+            lastFetchTime = Date.now();
             // console.log('cachedPrice', cachedPrice);
         } catch (error) {
-            console.error('Error fetching SOL price:', error);
+            console.error('Error fetching SEI price:', error);
             return null;
         }
     }
 
     useEffect(() => {
-        // getWalletSolBalance(wallet).then((bal) => {
-        //     // console.log("getWalletSolBalance bal=", bal);
-        //     setWalletSolBalance(bal);
-        // });
+        setWalletSolBalance(balances.usei);
+        getUserData().then((data) => {
+            if (data !== false) {
+                // console.log('userdata is: >>>>>', data)
+                if (data.refAddress) {
+                    const currentParams = new URLSearchParams(window.location.search);
+                    const currentRef = currentParams.get('ref');
 
-        // getUserData(wallet).then((data) => {
-        //     if (data !== null) {
-        //         if (data.refAddress) {
-        //             const currentParams = new URLSearchParams(window.location.search);
-        //             const currentRef = currentParams.get('ref');
-
-        //             // console.log('data.refAddress', data.refAddress);
-
-        //             //Constants.TREASURY
-
-        //             // console.log('Constants.TREASURY', Constants.TREASURY.toBase58());
-
-        //             if (data.refAddress !== Constants.TREASURY.toBase58() && currentRef !== data.refAddress) {
-        //                 const newUrl = `${window.location.origin}?ref=${data.refAddress}`;
-        //                 window.location.href = newUrl;
-        //             }
-        //         }
-        //         setBeanRewards(data.beanRewards);
-        //         setMinersCount(data.miners);
-        //     } else {
-        //         setBeanRewards("0");
-        //         setMinersCount("0");
-        //     }
-        // });
-        // getGlobalStateData(wallet).then((data) => {
-        //     if (data != null) {
-        //         setAdminKey(data.authority);
-        //     }
-        // });
-        // }, [wallet, dataUpdate]);
-    }, [dataUpdate]);
+                    if (data.refAddress !== Constants.TREASURY.toBase58() && currentRef !== data.refAddress) {
+                        const newUrl = `${window.location.origin}?ref=${data.refAddress}`;
+                        window.location.href = newUrl;
+                    }
+                }
+                console.log("getUserData() data >> ", data);
+                setBeanRewards(data.beanRewards);
+                setMinersCount(data.miners);
+            } else {
+                setBeanRewards("0");
+                setMinersCount("0");
+            }
+        }).catch(err => {
+            console.log(err);
+        });
+        getGlobalStateData().then((data) => {
+            if (data != null) {
+                setAdminKey(data.authority);
+                setTreasuryWallet(data.treasury);
+                if (data.is_mining_started === 0)
+                    setIsStarted(false);
+                if (data.is_mining_started === 1)
+                    setIsStarted(true);
+            }
+        }).catch(err => {
+            console.log(err);
+        });
+    }, [address, dataUpdate]);
 
     function numberWithCommas(x) {
         return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
     useEffect(() => {
-        // getVaultSolBalance(wallet).then((bal) => {
-        //     getSolanaPriceInUSD().then((price) => {
-        //         const calculatedTVL = +cachedPrice * bal
-        //         setTVLBalance(numberWithCommas(calculatedTVL.toFixed(2)));
-        //     });
-        //     setContractSolBalance(bal);
-        // });
-        // }, [wallet, dataUpdate]);
-    }, [dataUpdate]);
+        getSolanaPriceInUSD().then((price) => {
+            let calculatedTVL = 0;
+            // if (isEmpty(balances.minerContract))
+            if (isEmpty(balances[minerContract]))
+                calculatedTVL = cachedPrice * 0;
+            else
+                calculatedTVL = cachedPrice * balances[minerContract]
+            // calculatedTVL = cachedPrice * balances.minerContract
+            setTVLBalance(numberWithCommas(calculatedTVL.toFixed(2)));
+            console.log(cachedPrice, balances, numberWithCommas(calculatedTVL.toFixed(2)))
+        });
+    }, [address, dataUpdate, balances]);
 
     useEffect(() => {
         setTimeout(() => {
-            // if (wallet.publicKey) toggleDataUpdate();
+            // if (address.publicKey) toggleDataUpdate();
+            if (address) toggleDataUpdate();
         }, 60000);
     });
 
@@ -153,10 +175,22 @@ export default function BakeCard() {
         return ref;
     };
 
-    const initializeProgram = async () => {
+    // const initializeProgram = async () => {
+    //     setLoading(true);
+    //     try {
+    //         await initialize(address);
+    //     } catch (err) {
+    //         console.error(err);
+    //     }
+    //     setLoading(false);
+    //     toggleDataUpdate();
+    // };
+
+    const startMine = async () => {
+
         setLoading(true);
         try {
-            // await initialize(wallet);
+            await startMining(address);
         } catch (err) {
             console.error(err);
         }
@@ -167,15 +201,8 @@ export default function BakeCard() {
     const bake = async () => {
         setLoading(true);
 
-        let ref = getRef();
-
-        // console.log('ref bake', ref);
-
-        // if (ref === null) ref = wallet.publicKey;
-
-        // ref = new PublicKey(ref);
         try {
-            // await buyEggs(wallet, ref, bakeSOL);
+            await buyBananas(address, bakeSOL);
         } catch (err) {
             console.error(err);
         }
@@ -187,12 +214,10 @@ export default function BakeCard() {
         setLoading(true);
 
         let ref = getRef();
+        if (ref === undefined) ref = address;
 
-        // if (ref === null) ref = wallet.publicKey;
-
-        // ref = new PublicKey(ref);
         try {
-            // await hatchEggs(wallet, ref);
+            await hatchBananas(address, ref);
         } catch (err) {
             console.error(err);
         }
@@ -202,9 +227,9 @@ export default function BakeCard() {
 
     const eatBeans = async () => {
         setLoading(true);
-
+        console.log('balances is: ', balances);
         try {
-            // await sellEggs(wallet);
+            await sellBananas(address);
         } catch (err) {
             console.error(err);
         }
@@ -232,7 +257,7 @@ export default function BakeCard() {
                     mt={3}
                 >
                     <Typography variant="body1">Contract</Typography>
-                    <Typography variant="h5">{contractSolBalance} SOL</Typography>
+                    <Typography variant="h5">{!balances.minerContract ? 0 : balances.minerContract} SEI</Typography>
                 </UnderlinedGrid>
                 <UnderlinedGrid
                     container
@@ -241,7 +266,8 @@ export default function BakeCard() {
                     mt={3}
                 >
                     <Typography variant="body1">Wallet</Typography>
-                    <Typography variant="h5">{walletSolBalance} SOL</Typography>
+                    <Typography variant="h5">{!address ? 0 : balances.usei} SEI</Typography>
+                    {/* <Typography variant="h5">{isEmpty(balances.usei) ? 0 : balances.usei} SEI</Typography> */}
                 </UnderlinedGrid>
                 <UnderlinedGrid
                     container
@@ -261,25 +287,25 @@ export default function BakeCard() {
                         />
                     </Box>
 
-                    {/* <Box marginTop={3} marginBottom={3}>
+                    {/* <Box marginTop={3} marginBottom={3} hidden={!isAdminConnected()}> */}
+                    <Box marginTop={3} marginBottom={3} hidden={!canShowStartMine}>
                         <Button
                             variant="contained"
                             fullWidth
-                            onClick={initializeProgram}
-                            hidden
+                            onClick={startMine}
+                            hidden={!canShowStartMine}
                             className="custom-button"
                         >
-                            Init
+                            Start Mine
                         </Button>
-                    </Box> */}
+                    </Box>
 
                     <Box marginTop={3} marginBottom={3}>
                         <Button
                             variant="contained"
                             color="secondary"
                             fullWidth
-                            // disabled={!address || +bakeSOL === 0 || loading}
-
+                            disabled={!address || +bakeSOL === 0 || loading}
                             onClick={bake}
                             className="custom-button"
                         >
@@ -297,7 +323,7 @@ export default function BakeCard() {
                             Your Rewards
                         </Typography>
                         <Typography variant="h5" fontWeight="bolder">
-                            {beanRewards} SOL
+                            {beanRewards} SEI
                         </Typography>
                     </Grid>
                     <ButtonContainer container spacing={1}>
@@ -306,7 +332,7 @@ export default function BakeCard() {
                                 variant="contained"
                                 color="secondary"
                                 fullWidth
-                                // disabled={!address || loading}
+                                disabled={!address || loading}
                                 onClick={reBake}
                                 className="custom-button"
                             >
@@ -318,7 +344,7 @@ export default function BakeCard() {
                                 variant="contained"
                                 color="secondary"
                                 fullWidth
-                                // disabled={!address || loading}
+                                disabled={!address || loading}
                                 onClick={eatBeans}
                                 className="custom-button"
                             >

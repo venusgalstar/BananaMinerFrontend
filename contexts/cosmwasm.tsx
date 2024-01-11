@@ -9,28 +9,24 @@ import { GasPrice } from "@cosmjs/stargate";
 import { JsonObject } from "@cosmjs/cosmwasm-stargate";
 import { useChain, useWalletClient } from "@cosmos-kit/react";
 import axios from "axios";
-import { config, chainName, defaultDenom } from "../config";
+import { config, chainName, defaultDenom, minerContract } from "../config";
 import {
   convertDenomToMicroDenom,
   convertMicroDenomToDenom,
 } from "../utils/utils";
-import {
-  pinURLToIPFS,
-  pinFileToIPFS,
-  pinJSONToIPFS,
-} from "../config/pinatasdk";
+import { toast } from "react-toastify"
+import { BigNumber } from "bignumber.js";
 
 const defaultFee = {
   amount: [],
   gas: "1000000",
 };
 
-const CW20_DECIMAL = 10 ** 6;
-const AIRDROP_STAGE = 3;
+// const AIRDROP_STAGE = 3;
 const CosmwasmContext = createContext({});
 export const useSigningClient = () => useContext(CosmwasmContext);
 
-const toQueryMsg = (msg) => {
+const toQueryMsg = (msg: string) => {
   try {
     return JSON.stringify(JSON.parse(msg));
   } catch (error) {
@@ -38,13 +34,14 @@ const toQueryMsg = (msg) => {
   }
 };
 
-const getURL = (contract, msg, baseUrl = "") => {
-  const lcd = "https://lcd.testnet.osmosis.zone/";
-  const query_msg =
-    typeof msg === "string" ? toQueryMsg(msg) : JSON.stringify(msg);
-  return `${baseUrl || lcd
-    }/cosmwasm/wasm/v1/contract/${contract}/smart/${window.btoa(query_msg)}`;
-};
+
+// const getURL = (contract: any, msg: string, baseUrl = "") => {
+//   const lcd = "https://lcd.testnet.osmosis.zone/";
+//   const query_msg =
+//     typeof msg === "string" ? toQueryMsg(msg) : JSON.stringify(msg);
+//   return `${baseUrl || lcd
+//     }/cosmwasm/wasm/v1/contract/${contract}/smart/${window.btoa(query_msg)}`;
+// };
 
 export const SigningCosmWasmProvider = ({ children }: any) => {
   const [pending, setPending] = useState(false);
@@ -72,12 +69,60 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         console.info("no rpc endpoint — using a fallback");
         rpcEndpoint = `https://rpc.testnet.osmosis.zone/`;
       }
-
       updateBalance();
     } else {
-      // await connect();
+      await connect();
     }
   };
+
+
+  const startMining = async (sender: string) => {
+    try {
+      const signingClient = await getSigningCosmWasmClient();
+      if (address) {
+        setPending(true);
+        const result: any = await signingClient.execute(
+          sender,
+          config.MINER_CONTRACT,
+          {
+            start_mine: {},
+          },
+          defaultFee,
+        );
+        console.log(result?.transactionHash);
+        setPending(false);
+        updateBalance();
+        return result?.transactionHash;
+      }
+    } catch (err) {
+      setPending(false);
+      console.error(err);
+    }
+  }
+
+  // const initialize = async (sender: string) => {
+  //   try {
+  //     const signingClient = await getSigningCosmWasmClient();
+  //     if (address) {
+  //       setPending(true);
+  //       const result: any = await signingClient.execute(
+  //         sender,
+  //         config.MINER_CONTRACT,
+  //         {
+  //           start_mine: {},
+  //         },
+  //         defaultFee,
+  //       );
+  //       console.log(result?.transactionHash);
+  //       setPending(false);
+  //       updateBalance();
+  //       return result?.transactionHash;
+  //     }
+  //   } catch (err) {
+  //     setPending(false);
+  //     console.error(err);
+  //   }
+  // }
 
   const updateBalance = async () => {
     try {
@@ -94,12 +139,15 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         }
         if (signingClient) {
           const factory: JsonObject = await signingClient?.getBalance(
-            address,
-            config.FACTORY_TOKEN
+            // address,
+            config.MINER_CONTRACT,
+            defaultDenom
           );
-          balanceList[config.FACTORY_TOKEN] = convertMicroDenomToDenom(factory.amount, 0);
+          // console.log('factory amount is: ', native)
+          // console.log('factory amount is: ', factory)
+          balanceList[minerContract] = convertMicroDenomToDenom(factory.amount);
         }
-        console.log(">>>>", balanceList);
+        console.log("3333333333: ", balanceList);
         setBalances(balanceList);
       }
     } catch (err) {
@@ -107,241 +155,202 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
     }
   };
 
-  const buyToken = async (sender, osmoAmount) => {
+
+  const buyBananas = async (sender: string, seiAmount: any) => {
     const signingClient = await getSigningCosmWasmClient();
     if (!signingClient) return null;
     setPending(true);
     try {
       const result: any = await signingClient.execute(
         sender,
-        config.BONDING_CONTRACT,
+        config.MINER_CONTRACT,
         {
-          buy: {},
+          buy_bananas: {
+            sei_amount: convertDenomToMicroDenom(seiAmount)
+          },
         },
         defaultFee,
         undefined,
-        [{ denom: "uosmo", amount: osmoAmount }]
+        [{ denom: "usei", amount: convertDenomToMicroDenom(seiAmount) }]
       );
-      console.log(result?.transactionHash);
+      // console.log(result?.transactionHash);
+      // setPending(false);
+      // updateBalance();
+      // console.log('1111111111 :', result)
+      if (result.transactionHash) {
+        updateBalance();
+        toast.success('Buy Banana is successfully');
+        // return result?.transactionHash;
+      } else {
+        toast.error('Buy Banana is failed')
+      }
       setPending(false);
-      return result?.transactionHash;
     } catch (err) {
       setPending(false);
       console.log(err);
+      toast.error('Something went wrong.')
       throw err;
     }
   };
 
-  const burnToken = async (sender, amount) => {
+  const sellBananas = async (sender: string) => {
     const signingClient = await getSigningCosmWasmClient();
     if (!signingClient) return null;
     setPending(true);
     try {
       const result: any = await signingClient.execute(
         sender,
-        config.FACTORY_TOKEN,
+        config.MINER_CONTRACT,
         {
-          burn: {
-            amount: amount.toString(),
-            refund: false,
-          },
+          sell_bananas: {},
         },
-        defaultFee
+        defaultFee,
       );
-      console.log(result?.transactionHash);
+      // console.log(result?.transactionHash);
+      if (result.transactionHash) {
+        updateBalance();
+        toast.success('Claim Rewards is successfully');
+        // return result?.transactionHash;
+      } else {
+        toast.error('Claim Rewards is failed')
+      }
       setPending(false);
-      return result?.transactionHash;
     } catch (err) {
       setPending(false);
+      console.log(err);
+      toast.error('Something went wrong.')
+      throw err;
+    }
+  };
+
+  const hatchEggs = async (sender: string, ref: any) => {
+    const signingClient = await getSigningCosmWasmClient();
+    if (!signingClient) return null;
+    setPending(true);
+    try {
+      const result: any = await signingClient.execute(
+        sender,
+        config.MINER_CONTRACT,
+        {
+          hatch_bananas: {
+            referrer: ref
+          },
+        },
+        defaultFee,
+      );
+      console.log('hatchBananas return is: ', result)
+      if (result.transactionHash) {
+        updateBalance();
+        toast.success('Compound Banana is successfully');
+        // return result?.transactionHash;
+      } else {
+        toast.error('Compound Banana is failed')
+      }
+    } catch (err) {
+      setPending(false);
+      toast.error('Someting went wrong')
       console.log(err);
       throw err;
     }
   };
 
-  const getMerkleRoot = async () => {
+  const getGlobalStateData = async () => {
     const client = await getCosmWasmClient();
-    if (!client) return null;
-    try {
-      const response = await client.queryContractSmart(config.AIRDROP_CONTRACT, {
-        merkle_root: { stage: AIRDROP_STAGE },
-      });
-
-      return response;
-    } catch (err) {
-      console.log(err);
-    }
-    return null;
-  };
-
-  const isClaimed = async (address: string) => {
-    const signingClient = await getSigningCosmWasmClient();
-    if (!signingClient) return null;
-    try {
-      const response = await signingClient.queryContractSmart(
-        config.AIRDROP_CONTRACT,
-        {
-          is_claimed: { stage: AIRDROP_STAGE, address },
-        }
-      );
-
-      return response;
-    } catch (err) {
-      console.log(err);
-    }
-    return null;
-  };
-  
-  const getClaimInfo = async (address: string) => {
-    const signingClient = await getSigningCosmWasmClient();
-    if (!signingClient) return null;
-    try {
-      const response = await signingClient.queryContractSmart(
-        config.AIRDROP_CONTRACT,
-        {
-          claim_info: { address },
-        }
-      );
-
-      return response;
-    } catch (err) {
-      console.log(err);
-    }
-    return null;
-  };
-
-  const getTokenCurveInfo = async () => {
-    const client = await getCosmWasmClient();
-    if (!client) return null;
-    try {
-      const response = await client.queryContractSmart(config.BONDING_CONTRACT, {
-        curve_info: {},
-      });
-
-      return response;
-    } catch (err) {
-      console.log(err);
-    }
-    return null;
-  };
-
-  const getNFTStock = async () => {
-    const client = await getCosmWasmClient();
+    // console.log('11111111111', client);
     if (!client) return -1;
     try {
-      const response = await client.queryContractSmart(config.CW721_CONTRACT, {
-        num_tokens: {},
+      const response = await client.queryContractSmart(config.MINER_CONTRACT, {
+        config: {},
       });
-      console.log(">>>", response);
-      return response.count;
+      // console.log("GlobalStateData >>>>: ", response);
+      return response;
     } catch (err) {
       console.log(err);
     }
     return -1;
   };
 
-  const claimAirdrop = async (sender, proof) => {
-    const signingClient = await getSigningCosmWasmClient();
-    if (!signingClient) return null;
-    setPending(true);
+  const getUserData = async () => {
+    const client = await getCosmWasmClient();
+    // console.log('client is: ', client)
+    if (!client)
+      return -1;
     try {
-      const result: any = await signingClient.execute(
-        sender,
-        config.AIRDROP_CONTRACT,
-        {
-          claim: {
-            stage: AIRDROP_STAGE,
-            amount: "1",
-            proof,
-          },
+      const stateData = await client.queryContractSmart(config.MINER_CONTRACT, {
+        staking: {
+          address: address
         },
-        defaultFee
-      );
-      console.log(result?.transactionHash);
-      setPending(false);
-      return result?.transactionHash;
-    } catch (err) {
-      setPending(false);
-      throw err;
-    }
-  };
+      });
+      if (stateData === null) return null;
+      // console.log("getUserData >>>>: ", stateData);
 
-  const mintNFT = async (path, size, sender) => {
-    const signingClient = await getSigningCosmWasmClient();
-    if (!signingClient) return null;
-    setPending(true);
-    console.log(path, size, sender);
-    let uriHash = "";
-    try {
-      const fileHash = await pinURLToIPFS(path);
-      console.log(">>> File Hash >>>", fileHash);
-      if (!fileHash) {
-        setPending(false);
-        return;
+      // const globalData = await client.queryContractSmart(config.MINER_CONTRACT, {
+      //   config: {},
+      // });
+      const globalData = await getGlobalStateData()
+      if (globalData === null) return null;
+      console.log('globalStateData Cosmwasm File >>> ', globalData);
+      
+      // getOrangesSinceLastHatch
+      let secondsPassed = Math.min(Number(globalData.bananas_per_miner), Date.now() / 1000 - Number(stateData.last_hatch_time));
+      // console.log('secondsPassed =', secondsPassed);
+      // console.log('Number(stateData.claimed_bananas) =', Number(stateData.claimed_bananas));
+      // console.log('stateData =', stateData);
+      // console.log('stateData.user =', address);
+      // console.log('stateData.miners =', stateData.miners);
+      // console.log('Number(secondsPassed) * Number(stateData.miners)  = ', Number(secondsPassed) * Number(stateData.miners) );
+      let myBananas = Number(stateData.claimed_bananas) + Number(secondsPassed) * Number(stateData.miners);
+      // console.log('myBananas is: ', myBananas);
+      // console.log('globalData.marketOranges =', Number(globalData.market_bananas));
+      const factory: JsonObject = await client?.getBalance(
+        address,
+        config.MINER_CONTRACT,
+      );
+      // console.log('factory amount is: ', factory)
+      const vaultBal = factory.amount;
+      // updateBalance()
+      // const vaultBal = balances[minerContract];
+      // console.log('aaaaaaaaaa', vaultBal);
+      // console.log('new BN(vaultBal) =', new BigNumber(vaultBal));
+      let beanRewards = calculateTrade(myBananas, globalData.market_bananas, new BigNumber(vaultBal), globalData.psn, globalData.psnh);
+
+      return {
+        miners: stateData.miners,
+        beanRewards: beanRewards.toString()
+        // referrer: stateData.referrer
       }
-      const metadata = {
-        name: "Shirtdrop",
-        description: "Suitdrop NFT for Shirtdrop",
-        image: `ipfs://${fileHash}`,
-        size,
-      };
-      uriHash = await pinJSONToIPFS(metadata);
-      console.log(">>> URI Hash >>>", uriHash);
-    } catch (err) {
-      setPending(false);
-      throw err;
-    }
-
-    try {
-      const result: any = await signingClient.execute(
-        sender,
-        config.REDEEM_CONTRACT,
-        {
-          mint: {
-            uri: uriHash,
-          },
-        },
-        defaultFee
-      );
-      console.log(result?.transactionHash);
-      setPending(false);
-      return result?.transactionHash;
     } catch (err) {
       console.log(err);
-      setPending(false);
-      throw err;
     }
+    return false;
   };
 
-  const redeem = async (sender) => {
-    const signingClient = await getSigningCosmWasmClient();
-    if (!signingClient) return null;
-    setPending(true);
-    try {
-      const result: any = await signingClient.execute(
-        sender,
-        config.REDEEM_CONTRACT,
-        {
-          redeem: {
-            proof: "redeem/" + sender,
-          },
-        },
-        defaultFee,
-        undefined,
-        [{ denom: config.FACTORY_TOKEN, amount: "1" }]
-      );
-      console.log(result?.transactionHash);
-      setPending(false);
-      return result?.transactionHash;
-    } catch (err) {
-      console.log(err);
-      setPending(false);
-      throw err;
-    }
+  function calculateTrade(rt, rs, bs, PSN, PSNH) {
+    if (Number(rt) === 0) return 0;
+    // console.log('calcTrade');
+    // console.log(rt.toString());
+    // console.log(rs.toString());
+    // console.log(bs.toString());
+    // console.log(PSN.toString());
+    // console.log(PSNH.toString());
+    let x = new BigNumber(PSN).multipliedBy(bs);
+    let y = new BigNumber(PSNH).plus(new BigNumber(PSN).multipliedBy(rs)).plus(new BigNumber(PSNH).multipliedBy(rt).dividedBy(rt));
+    // console.log('calcTrade');
+    // console.log(x.toString());
+    // console.log(y.toString());
+    return x.dividedBy(y);
   }
 
   useEffect(() => {
-    connectWallet();
+    if (address) {
+      let localAddress = localStorage.getItem("address");
+      if (address !== localAddress) connectWallet();
+    }
   }, [address]);
+
+  useEffect(() => {
+    localStorage.setItem("address", "");
+  }, [])
 
   return (
     <CosmwasmContext.Provider
@@ -349,19 +358,16 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         pending,
         address,
         balances,
+        // wallet,
         connectWallet,
         updateBalance,
-        buyToken,
-        burnToken,
-        claimAirdrop,
-        mintNFT,
-        redeem,
-        isClaimed,
-
-        getMerkleRoot,
-        getTokenCurveInfo,
-        getClaimInfo,
-        getNFTStock,
+        buyBananas,
+        sellBananas,
+        hatchEggs,
+        startMining,
+        getGlobalStateData,
+        getUserData,
+        // initialize
       }}
     >
       {children}
