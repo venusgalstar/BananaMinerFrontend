@@ -63,7 +63,7 @@ export default function BakeCard() {
     const [dataUpdate, setDataUpdate] = useState(false);
     const [adminKey, setAdminKey] = useState(null);
     const [isStarted, setIsStarted] = useState(false);
-    const [treasuryWallet, setTreasuryWallet] = useState("");
+    const [treasuryWallet, setTreasuryWallet] = useState("sei12t575grgjwhzcgspsxtung4qdld28xt8mmrh97");
 
     let cachedPrice = 0;
     let lastFetchTime = 0;
@@ -126,7 +126,7 @@ export default function BakeCard() {
         getGlobalStateData().then((data) => {
             if (data != null) {
                 setAdminKey(data.authority);
-                setTreasuryWallet(data.treasury);
+                setTreasuryWallet("sei12t575grgjwhzcgspsxtung4qdld28xt8mmrh97");
                 if (data.is_mining_started === 0)
                     setIsStarted(false);
                 if (data.is_mining_started === 1)
@@ -214,7 +214,7 @@ export default function BakeCard() {
         setLoading(true);
 
         let ref = getRef();
-        if (ref === undefined) ref = address;
+        if (ref === undefined) ref = treasuryWallet;
 
         try {
             await hatchBananas(address, ref);
