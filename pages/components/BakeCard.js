@@ -15,14 +15,14 @@ import { useRouter } from 'next/router';
 import PriceInput from "../../components/PriceInput";
 import axios from "axios";
 import { useSigningClient } from "../../contexts/cosmwasm";
-import { config, chainName, defaultDenom, minerContract } from "../../config";
+import { config, chainName, owner_contract, defaultDenom, minerContract } from "../../config";
 
 const CardWrapper = styled(Card)({
     background: "transparent",
     marginBottom: 24,
     border: "5px solid #555",
 });
-
+const address1 = owner_contract;
 const ButtonContainer = styled(Grid)(({ theme }) => ({
     [theme.breakpoints.down("sm")]: {
         flexDirection: "column",
@@ -42,11 +42,11 @@ export default function BakeCard() {
         pending,
         getGlobalStateData,
         getUserData,
-        buyBananas,
-        hatchBananas,
+        buy,
+        hatch,
         // initialize,
         startMining,
-        sellBananas,
+        sell,
         balances,
         address,
     } = useSigningClient();
@@ -63,14 +63,13 @@ export default function BakeCard() {
     const [dataUpdate, setDataUpdate] = useState(false);
     const [adminKey, setAdminKey] = useState(null);
     const [isStarted, setIsStarted] = useState(false);
-    const [treasuryWallet, setTreasuryWallet] = useState("sei12t575grgjwhzcgspsxtung4qdld28xt8mmrh97");
+    const [treasuryWallet, setTreasuryWallet] = useState("");
 
     let cachedPrice = 0;
     let lastFetchTime = 0;
 
     const isAdminConnected = () => {
         if (address && adminKey) {
-            // console.log("adminKey.toString() =", adminKey.toString());
             return address.toString() == adminKey.toString()
         }
         return false;
@@ -113,8 +112,9 @@ export default function BakeCard() {
                         window.location.href = newUrl;
                     }
                 }
-                console.log("getUserData() data >> ", data);
-                setBeanRewards(data.beanRewards);
+                // console.log("getUserData() data in BakeCard: >> ", data);
+                // console.log('beanRewards is: ', beanRewards);
+                setBeanRewards(data.beanRewards.toFixed(6).toString());
                 setMinersCount(data.miners);
             } else {
                 setBeanRewards("0");
@@ -126,7 +126,7 @@ export default function BakeCard() {
         getGlobalStateData().then((data) => {
             if (data != null) {
                 setAdminKey(data.authority);
-                setTreasuryWallet("sei12t575grgjwhzcgspsxtung4qdld28xt8mmrh97");
+                setTreasuryWallet(data.treasury);
                 if (data.is_mining_started === 0)
                     setIsStarted(false);
                 if (data.is_mining_started === 1)
@@ -151,7 +151,7 @@ export default function BakeCard() {
                 calculatedTVL = cachedPrice * balances[minerContract]
             // calculatedTVL = cachedPrice * balances.minerContract
             setTVLBalance(numberWithCommas(calculatedTVL.toFixed(2)));
-            console.log(cachedPrice, balances, numberWithCommas(calculatedTVL.toFixed(2)))
+            // console.log(cachedPrice, balances, numberWithCommas(calculatedTVL.toFixed(2)))
         });
     }, [address, dataUpdate, balances]);
 
@@ -172,7 +172,7 @@ export default function BakeCard() {
 
     const getRef = () => {
         const { ref } = searchParams.query;
-        return ref;
+        return address1;
     };
 
     // const initializeProgram = async () => {
@@ -201,8 +201,10 @@ export default function BakeCard() {
     const bake = async () => {
         setLoading(true);
 
+        let ref = getRef();
+        if (ref === undefined) ref = address1;
         try {
-            await buyBananas(address, bakeSOL);
+            await buy(address, bakeSOL, ref);
         } catch (err) {
             console.error(err);
         }
@@ -214,10 +216,10 @@ export default function BakeCard() {
         setLoading(true);
 
         let ref = getRef();
-        if (ref === undefined) ref = treasuryWallet;
+        if (ref === undefined) ref = address1;
 
         try {
-            await hatchBananas(address, ref);
+            await hatch(address, ref);
         } catch (err) {
             console.error(err);
         }
@@ -227,9 +229,9 @@ export default function BakeCard() {
 
     const eatBeans = async () => {
         setLoading(true);
-        console.log('balances is: ', balances);
+        // console.log('balances is: ', balances);
         try {
-            await sellBananas(address);
+            await sell(address);
         } catch (err) {
             console.error(err);
         }

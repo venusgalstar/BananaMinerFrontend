@@ -1,14 +1,14 @@
 import {
   useState,
   useEffect,
-  useCallback,
+  // useCallback,
   createContext,
   useContext,
 } from "react";
-import { GasPrice } from "@cosmjs/stargate";
+// import { GasPrice } from "@cosmjs/stargate";
 import { JsonObject } from "@cosmjs/cosmwasm-stargate";
 import { useChain, useWalletClient } from "@cosmos-kit/react";
-import axios from "axios";
+// import axios from "axios";
 import { config, chainName, defaultDenom, minerContract } from "../config";
 import {
   convertDenomToMicroDenom,
@@ -26,14 +26,13 @@ const defaultFee = {
 const CosmwasmContext = createContext({});
 export const useSigningClient = () => useContext(CosmwasmContext);
 
-const toQueryMsg = (msg: string) => {
-  try {
-    return JSON.stringify(JSON.parse(msg));
-  } catch (error) {
-    return "";
-  }
-};
-
+// const toQueryMsg = (msg: string) => {
+//   try {
+//     return JSON.stringify(JSON.parse(msg));
+//   } catch (error) {
+//     return "";
+//   }
+// };
 
 // const getURL = (contract: any, msg: string, baseUrl = "") => {
 //   const lcd = "https://lcd.testnet.osmosis.zone/";
@@ -51,24 +50,24 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
     getSigningCosmWasmClient,
     getCosmWasmClient,
     address,
-    status,
-    wallet,
     connect,
-    disconnect,
-    username,
-    getRpcEndpoint,
+    // status,
+    // wallet,
+    // disconnect,
+    // username,
+    // getRpcEndpoint,
   } = useChain(chainName);
-  const { client } = useWalletClient();
+  // const { client } = useWalletClient();
 
   const connectWallet = async () => {
     if (address) {
-      const signingClient = await getSigningCosmWasmClient();
-      let rpcEndpoint = ""; //await getRpcEndpoint();
+      // const signingClient = await getSigningCosmWasmClient();
+      // let rpcEndpoint = ""; //await getRpcEndpoint();
 
-      if (!rpcEndpoint) {
-        console.info("no rpc endpoint — using a fallback");
-        rpcEndpoint = `https://rpc.testnet.osmosis.zone/`;
-      }
+      // if (!rpcEndpoint) {
+      //   console.info("no rpc endpoint — using a fallback");
+      //   rpcEndpoint = `https://rpc.testnet.osmosis.zone/`;
+      // }
       updateBalance();
     } else {
       await connect();
@@ -89,7 +88,7 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
           },
           defaultFee,
         );
-        console.log(result?.transactionHash);
+        // console.log(result?.transactionHash);
         setPending(false);
         updateBalance();
         return result?.transactionHash;
@@ -147,7 +146,7 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
           // console.log('factory amount is: ', factory)
           balanceList[minerContract] = convertMicroDenomToDenom(factory.amount);
         }
-        console.log("3333333333: ", balanceList);
+        // console.log("3333333333: ", balanceList);
         setBalances(balanceList);
       }
     } catch (err) {
@@ -156,7 +155,7 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
   };
 
 
-  const buyBananas = async (sender: string, seiAmount: any) => {
+  const buy = async (sender: string, Amount: any, ref: any) => {
     const signingClient = await getSigningCosmWasmClient();
     if (!signingClient) return null;
     setPending(true);
@@ -165,19 +164,30 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         sender,
         config.MINER_CONTRACT,
         {
-          buy_bananas: {
-            sei_amount: convertDenomToMicroDenom(seiAmount)
+          buy: {
+            amount: convertDenomToMicroDenom(Amount)
           },
         },
         defaultFee,
         undefined,
-        [{ denom: "usei", amount: convertDenomToMicroDenom(seiAmount) }]
+        [{ denom: "usei", amount: convertDenomToMicroDenom(Amount) }]
+      );
+
+      const Result1: any = await signingClient.execute(
+        sender,
+        config.MINER_CONTRACT,
+        {
+          hatch: {
+            referrer: ref
+          },
+        },
+        defaultFee,
       );
       // console.log(result?.transactionHash);
       // setPending(false);
       // updateBalance();
       // console.log('1111111111 :', result)
-      if (result.transactionHash) {
+      if (result.transactionHash && Result1.transactionHash) {
         updateBalance();
         toast.success('Buy Banana is successfully');
         // return result?.transactionHash;
@@ -193,7 +203,7 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
     }
   };
 
-  const sellBananas = async (sender: string) => {
+  const sell = async (sender: string) => {
     const signingClient = await getSigningCosmWasmClient();
     if (!signingClient) return null;
     setPending(true);
@@ -202,7 +212,7 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         sender,
         config.MINER_CONTRACT,
         {
-          sell_bananas: {},
+          sell: {},
         },
         defaultFee,
       );
@@ -223,7 +233,7 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
     }
   };
 
-  const hatchEggs = async (sender: string, ref: any) => {
+  const hatch = async (sender: string, ref: any) => {
     const signingClient = await getSigningCosmWasmClient();
     if (!signingClient) return null;
     setPending(true);
@@ -232,13 +242,13 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         sender,
         config.MINER_CONTRACT,
         {
-          hatch_bananas: {
+          hatch: {
             referrer: ref
           },
         },
         defaultFee,
       );
-      console.log('hatchBananas return is: ', result)
+      // console.log('hatch return is: ', result)
       if (result.transactionHash) {
         updateBalance();
         toast.success('Compound Banana is successfully');
@@ -256,7 +266,6 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
 
   const getGlobalStateData = async () => {
     const client = await getCosmWasmClient();
-    // console.log('11111111111', client);
     if (!client) return -1;
     try {
       const response = await client.queryContractSmart(config.MINER_CONTRACT, {
@@ -272,7 +281,6 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
 
   const getUserData = async () => {
     const client = await getCosmWasmClient();
-    // console.log('client is: ', client)
     if (!client)
       return -1;
     try {
@@ -282,42 +290,42 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         },
       });
       if (stateData === null) return null;
-      // console.log("getUserData >>>>: ", stateData);
+      // console.log("getUserData in Web3>>>>: ", stateData);
 
-      // const globalData = await client.queryContractSmart(config.MINER_CONTRACT, {
-      //   config: {},
-      // });
       const globalData = await getGlobalStateData()
       if (globalData === null) return null;
-      console.log('globalStateData Cosmwasm File >>> ', globalData);
+      // console.log('globalStateData Cosmwasm File >>> ', globalData);
       
       // getOrangesSinceLastHatch
-      let secondsPassed = Math.min(Number(globalData.bananas_per_miner), Date.now() / 1000 - Number(stateData.last_hatch_time));
+      // console.log('Date.now() is: ', Date.now() / 1000);
+      // console.log('Number(stateData.last_hatch_time) is: ', Number(stateData.last_hatch_time));
+      let secondsPassed = Math.min(Number(globalData.per_miner), Date.now() / 1000 - Number(stateData.last_hatch_time));
       // console.log('secondsPassed =', secondsPassed);
-      // console.log('Number(stateData.claimed_bananas) =', Number(stateData.claimed_bananas));
+      // console.log('Number(stateData.claimed) =', Number(stateData.claimed));
       // console.log('stateData =', stateData);
       // console.log('stateData.user =', address);
       // console.log('stateData.miners =', stateData.miners);
-      // console.log('Number(secondsPassed) * Number(stateData.miners)  = ', Number(secondsPassed) * Number(stateData.miners) );
-      let myBananas = Number(stateData.claimed_bananas) + Number(secondsPassed) * Number(stateData.miners);
-      // console.log('myBananas is: ', myBananas);
-      // console.log('globalData.marketOranges =', Number(globalData.market_bananas));
+      // console.log('new BigNumber(secondsPassed) * Number(stateData.miners)  = ', new BigNumber(secondsPassed).multipliedBy(stateData.miners).toString());
+      // let myBananas = Number(stateData.claimed) + Number(secondsPassed) * Number(stateData.miners);
+      let myBananas = new BigNumber(stateData.claimed).plus(new BigNumber(secondsPassed).multipliedBy(new BigNumber(stateData.miners)));
+      // console.log('myBananas is: ', myBananas?.toString());
+      // console.log('globalData.marketOranges =', Number(globalData.market));
       const factory: JsonObject = await client?.getBalance(
-        address,
         config.MINER_CONTRACT,
+        defaultDenom
       );
       // console.log('factory amount is: ', factory)
       const vaultBal = factory.amount;
       // updateBalance()
       // const vaultBal = balances[minerContract];
-      // console.log('aaaaaaaaaa', vaultBal);
-      // console.log('new BN(vaultBal) =', new BigNumber(vaultBal));
-      let beanRewards = calculateTrade(myBananas, globalData.market_bananas, new BigNumber(vaultBal), globalData.psn, globalData.psnh);
+
+      // console.log('vaultBal is: ', vaultBal);
+      
+      let beanRewards = calculateTrade(myBananas, globalData.market, new BigNumber(vaultBal), globalData.psn, globalData.psnh);
 
       return {
         miners: stateData.miners,
-        beanRewards: beanRewards.toString()
-        // referrer: stateData.referrer
+        beanRewards: convertMicroDenomToDenom(beanRewards)
       }
     } catch (err) {
       console.log(err);
@@ -334,7 +342,11 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
     // console.log(PSN.toString());
     // console.log(PSNH.toString());
     let x = new BigNumber(PSN).multipliedBy(bs);
-    let y = new BigNumber(PSNH).plus(new BigNumber(PSN).multipliedBy(rs)).plus(new BigNumber(PSNH).multipliedBy(rt).dividedBy(rt));
+    let PSN2 = new BigNumber(PSN);
+    let PSNH2 = new BigNumber(PSNH);
+    let rs2 = new BigNumber(rs);
+    let rt2 = new BigNumber(rt);
+    let y = PSN2.plus(PSN2.multipliedBy(rs2).plus(PSNH2.multipliedBy(rt2))).dividedBy(rt2);
     // console.log('calcTrade');
     // console.log(x.toString());
     // console.log(y.toString());
@@ -361,9 +373,9 @@ export const SigningCosmWasmProvider = ({ children }: any) => {
         // wallet,
         connectWallet,
         updateBalance,
-        buyBananas,
-        sellBananas,
-        hatchEggs,
+        buy,
+        sell,
+        hatch,
         startMining,
         getGlobalStateData,
         getUserData,

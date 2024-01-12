@@ -2,7 +2,7 @@ export * from "./features";
 export * from "./defaults";
 
 export const config = {
-  MINER_CONTRACT: "sei1w7quad4lkt32jcuxdp9szzsa5yh2yl66qjz4uz5uvgkknq3gpt8qu0fhmr",
+  MINER_CONTRACT: "sei1zu3nxpc6cxclausfxaj28pfu9cs5lm6vq9h7qdaxkaea5zjqqc9qwwmmfz",
   OWNER_CONCTRACT: "sei16p3vn96sf4sznda48vdtukd9lx8nmr36vr2hv5",
 };
 

@@ -4,6 +4,7 @@ import { ChainProvider } from "@cosmos-kit/react";
 import { wallets as keplrWallets } from "@cosmos-kit/keplr";
 import { wallets as cosmostationWallets } from "@cosmos-kit/cosmostation";
 import { wallets as leapWallets } from "@cosmos-kit/leap";
+import { wallets as compassWallet } from "@cosmos-kit/compass";
 import { Chain } from "@chain-registry/types";
 import { GasPrice } from "@cosmjs/stargate";
 import { Decimal } from "@cosmjs/math";
@@ -44,7 +45,7 @@ function CreateCosmosApp({ Component, pageProps }: AppProps) {
     <ChainProvider
       chains={[...chains, seiNetwork]}
       assetLists={[...assets, seiNetworkAssets]}
-      wallets={[...keplrWallets, ...cosmostationWallets, ...leapWallets]}
+      wallets={[...keplrWallets, ...compassWallet as any, ...cosmostationWallets, ...leapWallets]}
       walletConnectOptions={{
         signClient: {
           projectId: "a8510432ebb71e6948cfd6cde54b70f7",

@@ -104,7 +104,7 @@ code {
   background-color: #7d4e24 !important;
   font-size: 20px !important;
   border-radius: 10px !important;
-  color: black;
+  /* color: black; */
 }
 
 .MuiPaper-rounded {
